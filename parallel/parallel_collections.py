@@ -3,8 +3,8 @@ import multiprocessing
 
 from itertools import chain
 
-from lambdatools import prepare_func
-from pool import FPPool
+from .lambdatools import prepare_func
+from .pool import FPPool
 
 
 _lock = multiprocessing.Lock()

@@ -3,8 +3,12 @@ from itertools import chain
 from multiprocessing import pool
 
 
-def mapfilter(args):
-    return filter(*args)
+def mapstar(args):
+    return tuple(map(*args))
+
+
+def filterstar(args):
+    return tuple(filter(*args))
 
 
 class FPPool(pool.Pool):
@@ -25,12 +29,15 @@ class FPPool(pool.Pool):
         '_terminate',
     )
 
-    def filter(self, func, iterable, chunksize=None):
-        return self._filter_async(func, iterable, mapfilter, chunksize).get()
+    def map(self, func, iterable, chunksize=None):
+        return self._map_filter_async(func, iterable, mapstar, chunksize).get()
 
-    def _filter_async(self, func, iterable, mapper, chunksize=None, callback=None, error_callback=None):
+    def filter(self, func, iterable, chunksize=None):
+        return self._map_filter_async(func, iterable, filterstar, chunksize).get()
+
+    def _map_filter_async(self, func, iterable, mapper, chunksize=None, callback=None, error_callback=None):
         '''
-        Helper function to implement filter.
+        Helper function to implement map and filter.
         '''
         self._check_running()
         if not hasattr(iterable, '__len__'):
@@ -44,7 +51,7 @@ class FPPool(pool.Pool):
             chunksize = 0
 
         task_batches = FPPool._get_tasks(func, iterable, chunksize)
-        result = FilterResult(self, chunksize, len(iterable), callback, error_callback=error_callback)
+        result = MapFilterResult(self, chunksize, len(iterable), callback, error_callback=error_callback)
         self._taskqueue.put(
             (
                 self._guarded_task_generation(result._job,
@@ -56,7 +63,7 @@ class FPPool(pool.Pool):
         return result
 
 
-class FilterResult(pool.MapResult):
+class MapFilterResult(pool.MapResult):
 
     __slots__ = (
         '_pool',
