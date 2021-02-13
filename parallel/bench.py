@@ -2,7 +2,7 @@ from math import sqrt
 from multiprocessing import Pool
 from timeit import Timer
 
-from ..parallel import parallel
+from .parallel_collections import parallel
 
 
 def get_divisors_sum(n):
