@@ -8,6 +8,23 @@ def mapfilter(args):
 
 
 class FPPool(pool.Pool):
+    __slots__ = (
+        '_pool',
+        '_state',
+        '_ctx',
+        '_taskqueue',
+        '_change_notifier',
+        '_cache',
+        '_maxtasksperchild',
+        '_initializer',
+        '_initargs',
+        '_processes',
+        '_worker_handler',
+        '_task_handler',
+        '_result_handler',
+        '_terminate',
+    )
+
     def filter(self, func, iterable, chunksize=None):
         return self._filter_async(func, iterable, mapfilter, chunksize).get()
 
@@ -40,6 +57,19 @@ class FPPool(pool.Pool):
 
 
 class FilterResult(pool.MapResult):
+
+    __slots__ = (
+        '_pool',
+        '_event',
+        '_job',
+        '_cache',
+        '_callback',
+        '_error_callback',
+        '_success',
+        '_value',
+        '_mask',
+        '_chunksize',
+    )
 
     def __init__(self, pool_, chunksize, length, callback, error_callback):
         pool.ApplyResult.__init__(self, pool_, callback, error_callback=error_callback)

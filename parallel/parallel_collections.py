@@ -20,8 +20,10 @@ def close_pool(pool):
     pool.close()
 
 
-class _Reducer(object):
+class _Reducer:
     """Helper for the reducer methods"""
+
+    __slots__ = ('func', 'ns')
 
     def __init__(self, func, init=None):
         self.func = func
@@ -42,7 +44,8 @@ class _Reducer(object):
         return self.ns.result
 
 
-class ParallelGen(object):
+class ParallelGen:
+    __slots__ = ('data', 'pool')
 
     def __init__(self, data_source, pool_size=None, pool=None):
         self.data = data_source
