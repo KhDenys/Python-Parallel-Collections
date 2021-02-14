@@ -1,4 +1,3 @@
-from bisect import bisect
 from itertools import chain
 from multiprocessing import pool
 
@@ -30,12 +29,12 @@ class FPPool(pool.Pool):
     )
 
     def map(self, func, iterable, chunksize=None):
-        return self._map_filter_async(func, iterable, mapstar, chunksize).get()
+        return self._map_filter_async(func, iterable, mapstar, False, chunksize).get()
 
     def filter(self, func, iterable, chunksize=None):
-        return self._map_filter_async(func, iterable, filterstar, chunksize).get()
+        return self._map_filter_async(func, iterable, filterstar, True, chunksize).get()
 
-    def _map_filter_async(self, func, iterable, mapper, chunksize=None, callback=None, error_callback=None):
+    def _map_filter_async(self, func, iterable, mapper, is_filter, chunksize=None, callback=None, error_callback=None):
         '''
         Helper function to implement map and filter.
         '''
@@ -51,7 +50,7 @@ class FPPool(pool.Pool):
             chunksize = 0
 
         task_batches = FPPool._get_tasks(func, iterable, chunksize)
-        result = MapFilterResult(self, chunksize, len(iterable), callback, error_callback=error_callback)
+        result = MapFilterResult(self, chunksize, len(iterable), is_filter, callback, error_callback=error_callback)
         self._taskqueue.put(
             (
                 self._guarded_task_generation(result._job,
@@ -74,29 +73,33 @@ class MapFilterResult(pool.MapResult):
         '_error_callback',
         '_success',
         '_value',
-        '_mask',
         '_chunksize',
+        '_is_filter',
     )
 
-    def __init__(self, pool_, chunksize, length, callback, error_callback):
+    def __init__(self, pool_, chunksize, length, is_filter, callback, error_callback):
         pool.ApplyResult.__init__(self, pool_, callback, error_callback=error_callback)
         self._success = True
-        self._value = []
-        self._mask = []
         self._chunksize = chunksize
+        self._is_filter = is_filter
         if chunksize <= 0:
             self._number_left = 0
             self._event.set()
             del self._cache[self._job]
         else:
-            self._number_left = length//chunksize + bool(length % chunksize)
+            self._number_left = length // chunksize + bool(length % chunksize)
+
+        self._value = [None] * self._number_left
 
     def get(self, timeout=None):
         self.wait(timeout)
         if not self.ready():
             raise TimeoutError
         if self._success:
-            return chain(*self._value)
+            if self._is_filter:
+                return chain(*filter(None, self._value))
+            else:
+                return chain(*self._value)
         else:
             raise self._value
 
@@ -104,9 +107,7 @@ class MapFilterResult(pool.MapResult):
         self._number_left -= 1
         success, result = success_result
         if success and self._success:
-            idx = bisect(self._mask, i)
-            self._mask.insert(idx, i)
-            self._value.insert(idx, result)
+            self._value[i] = result
             if self._number_left == 0:
                 if self._callback:
                     self._callback(self._value)

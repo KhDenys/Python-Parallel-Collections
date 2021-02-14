@@ -30,22 +30,22 @@ if __name__ == '__main__':
 
     def test_multiprocessing_pool(n):
         with Pool(processes=4) as pool:
-            return pool.map(get_divisors_sum, range(n))
+            return pool.map(get_divisors_sum, [1000_000 for _ in range(n)])
 
     def test_parallel_map(n):
-        *l, = parallel(range(n), pool_size=4).map(get_divisors_sum)
+        *l, = parallel([1000_000 for _ in range(n)], pool_size=4).map(get_divisors_sum)
         return l
 
     def test_map(n):
-        *l, = map(get_divisors_sum, range(n))
+        *l, = map(get_divisors_sum, [1000_000 for _ in range(n)])
         return l
 
     def test_parallel_filter(n):
-        *l, = parallel(range(n), pool_size=4).filter(is_prime)
+        *l, = parallel([1000_000 for _ in range(n)], pool_size=4).filter(is_prime)
         return l
 
     def test_filter(n):
-        *l, = filter(is_prime, range(n))
+        *l, = filter(is_prime, [1000_000 for _ in range(n)])
         return l
 
     # equality check
@@ -54,21 +54,26 @@ if __name__ == '__main__':
     assert test_parallel_filter(a) == test_filter(a)
 
     # performance check
-    b = 1_000_000
-    loops = 3
+    loops = 10
 
-    test_multiprocessing_pool_timer = Timer(lambda: test_multiprocessing_pool(b))
-    test_parallel_map_timer = Timer(lambda: test_parallel_map(b))
-    test_map_timer = Timer(lambda: test_map(b))
+    for b in (1, 100, 10_000, 1000_000):
+        print(f'================================= start n={b} =================================')
 
-    print('test_multiprocessing_pool: ', test_multiprocessing_pool_timer.timeit(loops) / loops)
-    print('test_map: ', test_map_timer.timeit(loops) / loops)
-    print('test_parallel_map: ', test_parallel_map_timer.timeit(loops) / loops)
+        test_multiprocessing_pool_timer = Timer(lambda: test_multiprocessing_pool(b))
+        test_parallel_map_timer = Timer(lambda: test_parallel_map(b))
+        test_map_timer = Timer(lambda: test_map(b))
 
-    print()
+        print('test_parallel_map: ', test_parallel_map_timer.timeit(loops) / loops)
+        print('test_multiprocessing_pool: ', test_multiprocessing_pool_timer.timeit(loops) / loops)
+        print('test_map: ', test_map_timer.timeit(loops) / loops)
 
-    test_parallel_filter_timer = Timer(lambda: test_parallel_filter(b))
-    test_filter_timer = Timer(lambda: test_filter(b))
+        print()
 
-    print('test_filter: ', test_filter_timer.timeit(loops) / loops)
-    print('test_parallel_filter: ', test_parallel_filter_timer.timeit(loops) / loops)
+        test_parallel_filter_timer = Timer(lambda: test_parallel_filter(b))
+        test_filter_timer = Timer(lambda: test_filter(b))
+
+        print('test_filter: ', test_filter_timer.timeit(loops) / loops)
+        print('test_parallel_filter: ', test_parallel_filter_timer.timeit(loops) / loops)
+
+        print(f'================================= end n={b} =================================')
+        print('\n\n')
