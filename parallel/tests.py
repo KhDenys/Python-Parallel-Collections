@@ -2,7 +2,7 @@ import unittest
 from itertools import chain
 from collections import defaultdict
 
-from parallel_collections import parallel, _Reducer
+from .parallel_collections import parallel, _Reducer
 
 
 class TestHelpers(unittest.TestCase):
