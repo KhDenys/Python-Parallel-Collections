@@ -1,15 +1,31 @@
-from bisect import bisect
 from itertools import chain
 from multiprocessing import pool
 
 
-def mapfilter(args):
-    return filter(*args)
+def filterstar(args):
+    return list(filter(*args))
 
 
 class FPPool(pool.Pool):
+    __slots__ = (
+        '_pool',
+        '_state',
+        '_ctx',
+        '_taskqueue',
+        '_change_notifier',
+        '_cache',
+        '_maxtasksperchild',
+        '_initializer',
+        '_initargs',
+        '_processes',
+        '_worker_handler',
+        '_task_handler',
+        '_result_handler',
+        '_terminate',
+    )
+
     def filter(self, func, iterable, chunksize=None):
-        return self._filter_async(func, iterable, mapfilter, chunksize).get()
+        return self._filter_async(func, iterable, filterstar, chunksize).get()
 
     def _filter_async(self, func, iterable, mapper, chunksize=None, callback=None, error_callback=None):
         '''
@@ -40,12 +56,22 @@ class FPPool(pool.Pool):
 
 
 class FilterResult(pool.MapResult):
+    __slots__ = (
+        '_pool',
+        '_event',
+        '_job',
+        '_cache',
+        '_callback',
+        '_error_callback',
+        '_success',
+        '_value',
+        '_chunksize',
+        '_number_left',
+    )
 
     def __init__(self, pool_, chunksize, length, callback, error_callback):
         pool.ApplyResult.__init__(self, pool_, callback, error_callback=error_callback)
         self._success = True
-        self._value = []
-        self._mask = []
         self._chunksize = chunksize
         if chunksize <= 0:
             self._number_left = 0
@@ -54,12 +80,16 @@ class FilterResult(pool.MapResult):
         else:
             self._number_left = length//chunksize + bool(length % chunksize)
 
+        self._value = [None] * self._number_left
+
+
+
     def get(self, timeout=None):
         self.wait(timeout)
         if not self.ready():
             raise TimeoutError
         if self._success:
-            return chain(*self._value)
+            return chain.from_iterable(filter(None, self._value))
         else:
             raise self._value
 
@@ -67,9 +97,7 @@ class FilterResult(pool.MapResult):
         self._number_left -= 1
         success, result = success_result
         if success and self._success:
-            idx = bisect(self._mask, i)
-            self._mask.insert(idx, i)
-            self._value.insert(idx, result)
+            self._value[i] = result
             if self._number_left == 0:
                 if self._callback:
                     self._callback(self._value)
